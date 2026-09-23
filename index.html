@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#260c5b">
+  <title>プリンセス・タッチ！</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <section id="select" class="screen active" aria-labelledby="title">
+      <div class="sparkles" aria-hidden="true">✦　✧　✦</div>
+      <h1 id="title">プリンセス<br><span>タッチ！</span></h1>
+      <p class="lead">だれを みつける？</p>
+      <div id="choices" class="choices"></div>
+    </section>
+
+    <section id="difficulty" class="screen difficulty" aria-labelledby="difficultyTitle">
+      <p class="small">つぎは</p>
+      <h2 id="difficultyTitle">むずかしさを えらんでね</h2>
+      <img id="difficultyImage" class="difficulty-image" alt="">
+      <div class="time-choices" aria-label="プレイ時間">
+        <button class="time-btn active" data-time="10">10びょう</button>
+        <button class="time-btn" data-time="20">20びょう</button>
+      </div>
+      <div class="difficulty-choices">
+        <button class="difficulty-btn easy" data-level="easy"><strong>やさしい</strong><span>3こで パーフェクト</span></button>
+        <button class="difficulty-btn normal" data-level="normal"><strong>ふつう</strong><span>5こで パーフェクト</span></button>
+        <button class="difficulty-btn hard" data-level="hard"><strong>むずかしい</strong><span>10こで パーフェクト</span></button>
+      </div>
+      <button class="back-to-select back">← プリンセスを えらびなおす</button>
+    </section>
+
+    <section id="ready" class="screen" aria-live="polite">
+      <p class="small">このプリンセスを さがしてね</p>
+      <img id="targetImage" class="target-image" alt="">
+      <h2 id="targetName"></h2>
+      <p id="goalText" class="goal-text"></p>
+      <button id="startBtn" class="primary">スタート！</button>
+      <button class="back">← えらびなおす</button>
+    </section>
+
+    <section id="game" class="screen game-screen">
+      <header class="hud">
+        <div class="hud-box"><span>のこり</span><strong id="time">10</strong><small>びょう</small></div>
+        <div class="mini-target"><img id="miniTarget" alt=""><span id="miniName"></span></div>
+        <div class="hud-box"><span>せいかい</span><strong id="score">0</strong><small>こ</small></div>
+      </header>
+      <div id="playfield" class="playfield" aria-label="ゲームエリア"></div>
+      <div id="countdown" class="countdown"></div>
+      <div id="feedback" class="feedback"></div>
+      <div id="perfectBurst" class="perfect-burst">パーフェクト！<span>★ ★ ★</span></div>
+    </section>
+
+    <section id="result" class="screen result" aria-live="polite">
+      <div class="crown">♛</div>
+      <p>すごい！</p>
+      <img id="resultImage" class="result-image" alt="">
+      <h2><strong id="finalScore">0</strong>こ<br>みつけたよ！</h2>
+      <div id="resultBadge" class="result-badge"></div>
+      <button id="againBtn" class="primary">もういっかい</button>
+      <button class="back">ほかのプリンセス</button>
+    </section>
+  </main>
+  <script src="game.js"></script>
+</body>
+</html>
