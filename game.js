@@ -1,33 +1,388 @@
-const princesses=[
- {id:'ariel',name:'アリエル',img:'assets/1000032634.webp',music:'audio/ariel.mp3?v=20260923-4'},
- {id:'rapunzel',name:'ラプンツェル',img:'assets/1000032637.webp',music:'audio/rapunzel.mp3?v=20260923-4'},
- {id:'jasmine',name:'ジャスミン',img:'assets/1000032644.webp',music:'audio/jasmine.mp3?v=20260923-4'},
- {id:'snow',name:'しらゆきひめ',img:'assets/1000032645.webp',music:'audio/snow-white.mp3?v=20260923-4'}
+const AUDIO = { quiet: 0.28, game: 0.48, effect: 1, fadeMs: 700 };
+const TIMING = { countdown: 650, feedback: 480, result: 250 };
+
+const princesses = [
+  { id: 'ariel', name: 'アリエル', img: 'assets/1000032634.webp', music: 'audio/ariel.mp3?v=20260923-4' },
+  { id: 'rapunzel', name: 'ラプンツェル', img: 'assets/1000032637.webp', music: 'audio/rapunzel.mp3?v=20260923-4' },
+  { id: 'jasmine', name: 'ジャスミン', img: 'assets/1000032644.webp', music: 'audio/jasmine.mp3?v=20260923-4' },
+  { id: 'snow', name: 'しらゆきひめ', img: 'assets/1000032645.webp', music: 'audio/snow-white.mp3?v=20260923-4' },
 ];
-const levels={easy:{label:'やさしい',goal:3,slots:10,spawn:950,speed:[3.1,3.4],lanes:3,cardMax:190},normal:{label:'ふつう',goal:5,slots:14,spawn:600,speed:[2.3,2.55],lanes:3,cardMax:190},hard:{label:'むずかしい',goal:10,slots:25,tailSlots:4,spawn:400,speed:[2.0,2.2],lanes:4,cardMax:165}};
-const $=s=>document.querySelector(s);let target=null,level=null,duration=10,score=0,time=10,playing=false,perfectShown=false,spawnQueue=[],laneStep=0,spawnTimer,tickTimer,feedbackTimer,volumeTimer;
-const bgm=$('#bgm');const musicBtn=$('#musicBtn');bgm.volume=.28;
-const correctSound=$('#correctSound'),perfectSound=$('#perfectSound'),almostSound=$('#almostSound');
-[correctSound,perfectSound,almostSound].forEach(sound=>sound.volume=.9);
-const show=id=>{document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));$('#'+id).classList.add('active')};
-princesses.forEach(p=>{const b=document.createElement('button');b.className='choice';b.innerHTML=`<img src="${p.img}" alt="${p.name}"><span>${p.name}</span>`;b.onclick=()=>choose(p);$('#choices').append(b)});
-function choose(p){target=p;clearInterval(volumeTimer);bgm.pause();bgm.src=p.music;bgm.load();bgm.volume=.28;show('difficulty');playQuietBgm(true);$('#difficultyImage').src=p.img;$('#difficultyImage').alt=p.name;$('#targetImage').src=p.img;$('#targetImage').alt=p.name;$('#targetName').textContent=p.name;$('#miniTarget').src=p.img;$('#miniName').textContent=p.name}
-const goalCount=()=>level.goal*(duration/10);
-const updateDifficultyLabels=()=>document.querySelectorAll('.difficulty-btn').forEach(b=>{const l=levels[b.dataset.level];b.querySelector('span').textContent=`${l.goal*(duration/10)}こで パーフェクト`});
-document.querySelectorAll('.time-btn').forEach(b=>b.onclick=()=>{playQuietBgm(false);duration=Number(b.dataset.time);document.querySelectorAll('.time-btn').forEach(x=>x.classList.toggle('active',x===b));updateDifficultyLabels()});
-document.querySelectorAll('.difficulty-btn').forEach(b=>b.onclick=()=>{playQuietBgm(false);level=levels[b.dataset.level];$('#goalText').textContent=`${duration}びょう・${level.label}：${goalCount()}こで パーフェクト！`;show('ready')});
-musicBtn.onclick=()=>playQuietBgm(false);
-document.querySelectorAll('.back').forEach(b=>b.onclick=()=>{stop();show('select')});
-$('#startBtn').onclick=start;$('#againBtn').onclick=start;
-function start(){score=0;time=duration;playing=false;perfectShown=false;clearTimeout(feedbackTimer);if(bgm.paused){bgm.currentTime=0;bgm.volume=.28}const playAttempt=bgm.play();if(playAttempt)playAttempt.then(()=>setMusicStatus(true)).catch(()=>setMusicStatus(false));fadeVolume(.75,700);$('#score').textContent=score;$('#time').textContent=time;$('#feedback').textContent='';$('#feedback').className='feedback';$('#resultBadge').textContent='';$('#resultBadge').className='result-badge';$('#perfectBurst').className='perfect-burst';$('#playfield').replaceChildren();show('game');let n=3;$('#countdown').textContent=n;const c=setInterval(()=>{n--;if(n>0)$('#countdown').textContent=n;else if(n===0)$('#countdown').textContent='GO!';else{clearInterval(c);$('#countdown').textContent='';begin()}},650)}
-function begin(){playing=true;laneStep=Math.floor(Math.random()*level.lanes);spawnQueue=makeQueue();spawn();spawnTimer=setInterval(spawn,level.spawn);tickTimer=setInterval(()=>{time--;$('#time').textContent=time;if(time<=0)finish()},1000)}
-function makeQueue(){const others=princesses.filter(p=>p.id!==target.id);const goal=goalCount();const slots=level.slots*(duration/10);const targetSpan=slots-(level.tailSlots||0);const queue=Array.from({length:slots},(_,i)=>others[i%others.length]);const used=new Set();for(let i=0;i<goal;i++){let pos=Math.floor((i+.5)*targetSpan/goal);while(used.has(pos)&&pos<targetSpan-1)pos++;used.add(pos);queue[pos]=target}return queue}
-function spawn(){if(!playing)return;const others=princesses.filter(p=>p.id!==target.id);const p=spawnQueue.length?spawnQueue.shift():others[Math.floor(Math.random()*others.length)];const lane=laneStep%level.lanes;laneStep++;const field=$('#playfield');const laneWidth=field.clientWidth/level.lanes;const cardWidth=Math.min(laneWidth-10,level.cardMax);const img=document.createElement('img');img.className='falling';img.src=p.img;img.alt=p.name;img.dataset.id=p.id;img.style.width=`${cardWidth}px`;img.style.maxWidth='none';img.style.left=`${lane*laneWidth+(laneWidth-cardWidth)/2}px`;img.style.setProperty('--spin',`${Math.random()*8-4}deg`);img.style.animationDuration=`${level.speed[0]+Math.random()*(level.speed[1]-level.speed[0])}s`;img.onpointerdown=e=>hit(e,img,p);img.onanimationend=()=>img.remove();field.append(img)}
-function hit(e,img,p){e.preventDefault();if(!playing||img.dataset.hit)return;img.dataset.hit='1';if(p.id===target.id){score++;$('#score').textContent=score;playSound(correctSound);flash('せいかい！ ✨',true);if(score>=goalCount()&&!perfectShown){perfectShown=true;const burst=$('#perfectBurst');burst.classList.remove('show');void burst.offsetWidth;burst.classList.add('show')}img.style.transition='.25s';img.style.transform='scale(1.4)';img.style.opacity='0';setTimeout(()=>img.remove(),220)}else{flash('ちがうよ',false);img.animate([{transform:'translateX(-8px)'},{transform:'translateX(8px)'},{transform:'translateX(0)'}],{duration:220})}}
-function flash(message,ok){const f=$('#feedback');clearTimeout(feedbackTimer);f.textContent=message;f.style.color=ok?'#ffe762':'#fff';f.classList.remove('pop');void f.offsetWidth;f.classList.add('pop');feedbackTimer=setTimeout(()=>{f.textContent='';f.classList.remove('pop')},480)}
-function finish(){stop();$('#finalScore').textContent=score;$('#resultImage').src=target.img;$('#resultImage').alt=target.name;const badge=$('#resultBadge');const goal=goalCount();const isPerfect=score>=goal;badge.textContent='';badge.className='result-badge';if(isPerfect)badge.classList.add('perfect');else badge.textContent=`あと ${goal-score}こで パーフェクト！`;setTimeout(()=>{show('result');playSound(isPerfect?perfectSound:almostSound)},250)}
-function playSound(sound){sound.pause();sound.currentTime=0;const attempt=sound.play();if(attempt)attempt.catch(()=>{})}
-function fadeVolume(targetVolume,durationMs){clearInterval(volumeTimer);const from=bgm.volume;const steps=14;let step=0;volumeTimer=setInterval(()=>{step++;bgm.volume=Math.min(1,Math.max(0,from+(targetVolume-from)*(step/steps)));if(step>=steps)clearInterval(volumeTimer)},durationMs/steps)}
-function setMusicStatus(isPlaying){musicBtn.hidden=isPlaying;musicBtn.textContent='🔊 おんがくを きく';musicBtn.classList.toggle('playing',isPlaying)}
-function playQuietBgm(restart){clearInterval(volumeTimer);bgm.volume=.28;if(restart&&bgm.readyState>0)bgm.currentTime=0;const playAttempt=bgm.play();if(playAttempt)playAttempt.then(()=>setMusicStatus(true)).catch(()=>setMusicStatus(false));else setMusicStatus(true)}
-function stop(){playing=false;clearInterval(spawnTimer);clearInterval(tickTimer);clearInterval(volumeTimer);bgm.pause();setMusicStatus(false)}
+
+const levels = {
+  easy: { label: 'やさしい', goal: 3, slots: 10, spawnMs: 950, fallSeconds: [3.1, 3.4], lanes: 3, cardMax: 190 },
+  normal: { label: 'ふつう', goal: 5, slots: 14, spawnMs: 600, fallSeconds: [2.3, 2.55], lanes: 3, cardMax: 190 },
+  hard: { label: 'むずかしい', goal: 10, slots: 25, tailSlots: 4, spawnMs: 400, fallSeconds: [2, 2.2], lanes: 4, cardMax: 165 },
+};
+
+const $ = (selector) => document.querySelector(selector);
+const elements = {
+  bgm: $('#bgm'),
+  musicButton: $('#musicBtn'),
+  choices: $('#choices'),
+  difficultyImage: $('#difficultyImage'),
+  targetImage: $('#targetImage'),
+  targetName: $('#targetName'),
+  miniTarget: $('#miniTarget'),
+  miniName: $('#miniName'),
+  goalText: $('#goalText'),
+  score: $('#score'),
+  time: $('#time'),
+  feedback: $('#feedback'),
+  resultBadge: $('#resultBadge'),
+  resultImage: $('#resultImage'),
+  finalScore: $('#finalScore'),
+  perfectBurst: $('#perfectBurst'),
+  playfield: $('#playfield'),
+  countdown: $('#countdown'),
+};
+const effects = {
+  correct: $('#correctSound'),
+  perfect: $('#perfectSound'),
+  almost: $('#almostSound'),
+};
+const state = {
+  target: null,
+  level: null,
+  duration: 10,
+  score: 0,
+  time: 10,
+  playing: false,
+  perfectShown: false,
+  spawnQueue: [],
+  laneStep: 0,
+};
+const timers = {
+  countdown: null,
+  spawn: null,
+  tick: null,
+  feedback: null,
+  volume: null,
+  result: null,
+};
+
+elements.bgm.volume = AUDIO.quiet;
+Object.values(effects).forEach((sound) => { sound.volume = AUDIO.effect; });
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach((screen) => {
+    screen.classList.toggle('active', screen.id === id);
+  });
+}
+
+function goalCount() {
+  return state.level.goal * (state.duration / 10);
+}
+
+function createPrincessChoices() {
+  princesses.forEach((princess) => {
+    const button = document.createElement('button');
+    button.className = 'choice';
+    button.innerHTML = `<img src="${princess.img}" alt="${princess.name}"><span>${princess.name}</span>`;
+    button.addEventListener('click', () => choosePrincess(princess));
+    elements.choices.append(button);
+  });
+}
+
+function choosePrincess(princess) {
+  state.target = princess;
+  clearInterval(timers.volume);
+  elements.bgm.pause();
+  elements.bgm.src = princess.music;
+  elements.bgm.load();
+  elements.bgm.volume = AUDIO.quiet;
+
+  elements.difficultyImage.src = princess.img;
+  elements.difficultyImage.alt = princess.name;
+  elements.targetImage.src = princess.img;
+  elements.targetImage.alt = princess.name;
+  elements.targetName.textContent = princess.name;
+  elements.miniTarget.src = princess.img;
+  elements.miniName.textContent = princess.name;
+
+  showScreen('difficulty');
+  playQuietBgm(true);
+}
+
+function updateDifficultyLabels() {
+  document.querySelectorAll('.difficulty-btn').forEach((button) => {
+    const selectedLevel = levels[button.dataset.level];
+    const goal = selectedLevel.goal * (state.duration / 10);
+    button.querySelector('span').textContent = `${goal}こで パーフェクト`;
+  });
+}
+
+function selectDuration(button) {
+  playQuietBgm(false);
+  state.duration = Number(button.dataset.time);
+  document.querySelectorAll('.time-btn').forEach((item) => {
+    item.classList.toggle('active', item === button);
+  });
+  updateDifficultyLabels();
+}
+
+function selectDifficulty(button) {
+  playQuietBgm(false);
+  state.level = levels[button.dataset.level];
+  elements.goalText.textContent = `${state.duration}びょう・${state.level.label}：${goalCount()}こで パーフェクト！`;
+  showScreen('ready');
+}
+
+function startGame() {
+  resetGameState();
+  startGameBgm();
+  showScreen('game');
+  startCountdown();
+}
+
+function resetGameState() {
+  state.score = 0;
+  state.time = state.duration;
+  state.playing = false;
+  state.perfectShown = false;
+  clearTimeout(timers.feedback);
+  clearTimeout(timers.result);
+
+  elements.score.textContent = state.score;
+  elements.time.textContent = state.time;
+  elements.feedback.textContent = '';
+  elements.feedback.className = 'feedback';
+  elements.resultBadge.textContent = '';
+  elements.resultBadge.className = 'result-badge';
+  elements.perfectBurst.className = 'perfect-burst';
+  elements.playfield.replaceChildren();
+}
+
+function startGameBgm() {
+  if (elements.bgm.paused) {
+    elements.bgm.currentTime = 0;
+    elements.bgm.volume = AUDIO.quiet;
+  }
+  const attempt = elements.bgm.play();
+  if (attempt) {
+    attempt.then(() => setMusicStatus(true)).catch(() => setMusicStatus(false));
+  }
+  fadeVolume(AUDIO.game, AUDIO.fadeMs);
+}
+
+function startCountdown() {
+  let count = 3;
+  elements.countdown.textContent = count;
+  clearInterval(timers.countdown);
+  timers.countdown = setInterval(() => {
+    count -= 1;
+    if (count > 0) {
+      elements.countdown.textContent = count;
+    } else if (count === 0) {
+      elements.countdown.textContent = 'GO!';
+    } else {
+      clearInterval(timers.countdown);
+      elements.countdown.textContent = '';
+      beginPlay();
+    }
+  }, TIMING.countdown);
+}
+
+function beginPlay() {
+  state.playing = true;
+  state.laneStep = Math.floor(Math.random() * state.level.lanes);
+  state.spawnQueue = makeSpawnQueue();
+  spawnCard();
+  timers.spawn = setInterval(spawnCard, state.level.spawnMs);
+  timers.tick = setInterval(tickClock, 1000);
+}
+
+function tickClock() {
+  state.time -= 1;
+  elements.time.textContent = state.time;
+  if (state.time <= 0) finishGame();
+}
+
+function makeSpawnQueue() {
+  const others = princesses.filter((princess) => princess.id !== state.target.id);
+  const goal = goalCount();
+  const slotCount = state.level.slots * (state.duration / 10);
+  const targetSpan = slotCount - (state.level.tailSlots || 0);
+  const queue = Array.from({ length: slotCount }, (_, index) => others[index % others.length]);
+  const usedPositions = new Set();
+
+  for (let index = 0; index < goal; index += 1) {
+    let position = Math.floor(((index + 0.5) * targetSpan) / goal);
+    while (usedPositions.has(position) && position < targetSpan - 1) position += 1;
+    usedPositions.add(position);
+    queue[position] = state.target;
+  }
+  return queue;
+}
+
+function spawnCard() {
+  if (!state.playing) return;
+
+  const others = princesses.filter((princess) => princess.id !== state.target.id);
+  const princess = state.spawnQueue.length
+    ? state.spawnQueue.shift()
+    : others[Math.floor(Math.random() * others.length)];
+  const lane = state.laneStep % state.level.lanes;
+  const laneWidth = elements.playfield.clientWidth / state.level.lanes;
+  const cardWidth = Math.min(laneWidth - 10, state.level.cardMax);
+  const [minimumFall, maximumFall] = state.level.fallSeconds;
+  const card = document.createElement('img');
+  state.laneStep += 1;
+
+  card.className = 'falling';
+  card.src = princess.img;
+  card.alt = princess.name;
+  card.dataset.id = princess.id;
+  card.style.width = `${cardWidth}px`;
+  card.style.maxWidth = 'none';
+  card.style.left = `${lane * laneWidth + (laneWidth - cardWidth) / 2}px`;
+  card.style.setProperty('--spin', `${Math.random() * 8 - 4}deg`);
+  card.style.animationDuration = `${minimumFall + Math.random() * (maximumFall - minimumFall)}s`;
+  card.addEventListener('pointerdown', (event) => handleCardTouch(event, card, princess));
+  card.addEventListener('animationend', () => card.remove());
+  elements.playfield.append(card);
+}
+
+function handleCardTouch(event, card, princess) {
+  event.preventDefault();
+  if (!state.playing || card.dataset.hit) return;
+  card.dataset.hit = '1';
+
+  if (princess.id === state.target.id) {
+    handleCorrectTouch(card);
+  } else {
+    handleWrongTouch(card);
+  }
+}
+
+function handleCorrectTouch(card) {
+  state.score += 1;
+  elements.score.textContent = state.score;
+  playSound(effects.correct);
+  showFeedback('せいかい！ ✨', true);
+
+  if (state.score >= goalCount() && !state.perfectShown) {
+    state.perfectShown = true;
+    elements.perfectBurst.classList.remove('show');
+    void elements.perfectBurst.offsetWidth;
+    elements.perfectBurst.classList.add('show');
+  }
+
+  card.style.transition = '.25s';
+  card.style.transform = 'scale(1.4)';
+  card.style.opacity = '0';
+  setTimeout(() => card.remove(), 220);
+}
+
+function handleWrongTouch(card) {
+  showFeedback('ちがうよ', false);
+  card.animate(
+    [{ transform: 'translateX(-8px)' }, { transform: 'translateX(8px)' }, { transform: 'translateX(0)' }],
+    { duration: 220 },
+  );
+}
+
+function showFeedback(message, isCorrect) {
+  clearTimeout(timers.feedback);
+  elements.feedback.textContent = message;
+  elements.feedback.style.color = isCorrect ? '#ffe762' : '#fff';
+  elements.feedback.classList.remove('pop');
+  void elements.feedback.offsetWidth;
+  elements.feedback.classList.add('pop');
+  timers.feedback = setTimeout(() => {
+    elements.feedback.textContent = '';
+    elements.feedback.classList.remove('pop');
+  }, TIMING.feedback);
+}
+
+function finishGame() {
+  stopGame();
+  const goal = goalCount();
+  const isPerfect = state.score >= goal;
+
+  elements.finalScore.textContent = state.score;
+  elements.resultImage.src = state.target.img;
+  elements.resultImage.alt = state.target.name;
+  elements.resultBadge.textContent = '';
+  elements.resultBadge.className = 'result-badge';
+  if (isPerfect) {
+    elements.resultBadge.classList.add('perfect');
+  } else {
+    elements.resultBadge.textContent = `あと ${goal - state.score}こで パーフェクト！`;
+  }
+
+  timers.result = setTimeout(() => {
+    showScreen('result');
+    playSound(isPerfect ? effects.perfect : effects.almost);
+  }, TIMING.result);
+}
+
+function stopGame() {
+  state.playing = false;
+  clearInterval(timers.countdown);
+  clearInterval(timers.spawn);
+  clearInterval(timers.tick);
+  clearInterval(timers.volume);
+  elements.bgm.pause();
+  setMusicStatus(false);
+}
+
+function playSound(sound) {
+  sound.pause();
+  sound.currentTime = 0;
+  const attempt = sound.play();
+  if (attempt) attempt.catch(() => {});
+}
+
+function fadeVolume(targetVolume, duration) {
+  clearInterval(timers.volume);
+  const startingVolume = elements.bgm.volume;
+  const steps = 14;
+  let step = 0;
+
+  timers.volume = setInterval(() => {
+    step += 1;
+    const nextVolume = startingVolume + (targetVolume - startingVolume) * (step / steps);
+    elements.bgm.volume = Math.min(1, Math.max(0, nextVolume));
+    if (step >= steps) clearInterval(timers.volume);
+  }, duration / steps);
+}
+
+function setMusicStatus(isPlaying) {
+  elements.musicButton.hidden = isPlaying;
+  elements.musicButton.textContent = '🔊 おんがくを きく';
+  elements.musicButton.classList.toggle('playing', isPlaying);
+}
+
+function playQuietBgm(restart) {
+  clearInterval(timers.volume);
+  elements.bgm.volume = AUDIO.quiet;
+  if (restart && elements.bgm.readyState > 0) elements.bgm.currentTime = 0;
+
+  const attempt = elements.bgm.play();
+  if (attempt) {
+    attempt.then(() => setMusicStatus(true)).catch(() => setMusicStatus(false));
+  } else {
+    setMusicStatus(true);
+  }
+}
+
+function bindControls() {
+  document.querySelectorAll('.time-btn').forEach((button) => {
+    button.addEventListener('click', () => selectDuration(button));
+  });
+  document.querySelectorAll('.difficulty-btn').forEach((button) => {
+    button.addEventListener('click', () => selectDifficulty(button));
+  });
+  document.querySelectorAll('.back').forEach((button) => {
+    button.addEventListener('click', () => {
+      stopGame();
+      showScreen('select');
+    });
+  });
+  elements.musicButton.addEventListener('click', () => playQuietBgm(false));
+  $('#startBtn').addEventListener('click', startGame);
+  $('#againBtn').addEventListener('click', startGame);
+}
+
+createPrincessChoices();
+bindControls();
